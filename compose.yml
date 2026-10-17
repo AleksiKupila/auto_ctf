@@ -11,6 +11,7 @@ services:
 
   executor:
     build: ./docker/executor
+    container_name: command_executor
     depends_on:
       dvwa:
         condition: service_healthy

@@ -10,8 +10,9 @@ class ToolCall(BaseModel):
 class ToolOutput(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    successful: bool
-    output: str
+    status: bool
+    stdout: str
+    stderr: str
     
 
 RUN_COMMAND = {

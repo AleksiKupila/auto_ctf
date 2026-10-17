@@ -1,20 +1,41 @@
-from registry import ToolCall, ToolOutput
+import shlex
+import subprocess
+from src.tools.registry import ToolCall, ToolOutput
 
 # run_command, read_file, list_dir, finish
 
-def run_command(cmd):
+def run_command(cmd, EXECUTOR_CONTAINER):
 
     args = ToolCall(
         cmd=cmd
     )
     # TODO: Check policy
     # TODO: Execute in container
-    cmd_output, completed = "", True # EXAMPLE
 
+    completed = False
+    split_cmd = shlex.split(cmd)
+
+    try:
+        cmd_output = subprocess.run(
+            ['docker', 'exec', EXECUTOR_CONTAINER] + split_cmd,
+            capture_output=True,
+            text=True,
+        )
+        completed = True
+        print("Command executed succesfully!")
+
+    except Exception as e:
+        print(f"Error running command: {e}")
+
+    stdout = cmd_output.stdout
+    stderr = cmd_output.stderr
+    
     return ToolOutput(
         status=completed,
-        output=cmd_output 
+        stdout=stdout,
+        stderr=stderr
     )
+
 
 def read_file(path, max_size):
     return
