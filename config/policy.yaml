@@ -1,0 +1,11 @@
+- id: fs.recursive_delete_protected
+  program: rm
+  flags_any: [-r, -R, -rf, -fr, --recursive]
+  args_match: ["^/$", "^/(etc|usr|bin|lib|boot|var)(/.*)?$"]
+  action: deny
+  reason: "Recursive deletion of a system directory."
+
+- id: exec.dynamic
+  pattern_any: ["\\$\\(", "`", "\\beval\\b", "\\|\\s*(ba)?sh\\b"]
+  action: ask
+  reason: "Command executes dynamically constructed code."

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.config import config
-from src.models.model_client import (
+from src.llm.ollama_client import (
     ModelClientError,
     OllamaConnectionError,
     ModelNotFoundError,
@@ -12,10 +12,10 @@ from src.services.ai_service import AIService, generate_response
 
 def test_config_loading():
     """Verify that configuration settings load expected string values from environment or defaults."""
-    assert config.ollama_base_url is not None
-    assert config.model_name is not None
-    assert isinstance(config.ollama_base_url, str)
-    assert isinstance(config.model_name, str)
+    assert config.openai_base_url is not None
+    assert config.openai_model_name is not None
+    assert isinstance(config.openai_base_url, str)
+    assert isinstance(config.openai_model_name, str)
 
 
 def test_empty_input_validation():
@@ -47,7 +47,7 @@ def test_successful_response_generation():
     mock_client.generate.assert_called_once_with("Hello, AI")
 
 
-def test_ollama_connection_error_handling():
+def test_connection_error_handling():
     """Verify that Ollama connection failures produce a friendly application-level error message."""
     mock_client = MagicMock()
     mock_client.generate.side_effect = OllamaConnectionError("Connection refused at http://localhost:11434")

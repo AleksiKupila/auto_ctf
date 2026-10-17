@@ -1,0 +1,27 @@
+services:
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    networks: [sandbox]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/80' || exit 1"]
+      interval: 5s
+      start_period: 30s
+      retries: 10
+
+  executor:
+    build: ./docker/executor
+    depends_on:
+      dvwa:
+        condition: service_healthy
+
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    networks:
+      - sandbox
+
+networks:
+  sandbox:
+    internal: true

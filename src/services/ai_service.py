@@ -1,9 +1,12 @@
 from typing import Optional
-from src.models.model_client import (
+from src.llm.ollama_client import (
     OllamaModelClient,
     ModelClientError,
     OllamaConnectionError,
     ModelNotFoundError,
+)
+from src.llm.openai_compat import (
+    ModelClient
 )
 from src.schemas.responses import UserRequest, AIResponse
 
@@ -14,14 +17,15 @@ class AIService:
     orchestrating model client requests, and catching exceptions gracefully.
     """
 
-    def __init__(self, model_client: Optional[OllamaModelClient] = None):
+    def __init__(self, model_client: Optional[ModelClient] = None):
         # Allow injecting custom/mock model_client for simple testing
         self.model_client = model_client
 
-    def _get_client(self) -> OllamaModelClient:
+    def _get_client(self):
         """Returns active model client, initializing default client if none provided."""
         if self.model_client is None:
-            self.model_client = OllamaModelClient()
+            self.model_client = ModelClient()
+
         return self.model_client
 
     def process_message(self, user_message: str) -> AIResponse:

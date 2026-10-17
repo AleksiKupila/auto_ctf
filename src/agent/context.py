@@ -1,0 +1,1 @@
+# message building, output truncation, history trimming

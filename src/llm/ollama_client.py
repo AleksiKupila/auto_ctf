@@ -1,6 +1,7 @@
 from typing import Optional
-import ollama
 from src.config import config
+import ollama
+
 
 
 class ModelClientError(Exception):
@@ -23,7 +24,7 @@ class OllamaModelClient:
 
     def __init__(self, base_url: Optional[str] = None, model_name: Optional[str] = None):
         self.base_url = base_url or config.ollama_base_url
-        self.model_name = model_name or config.model_name
+        self.model_name = model_name or config.ollama_model_name
         self._client = ollama.Client(host=self.base_url)
 
     def generate(self, prompt: str) -> str:
