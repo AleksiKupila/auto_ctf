@@ -1,7 +1,8 @@
 import shlex, io
 import subprocess
-from src.tools.registry import ToolCall, ToolOutput
+from src.tools.registry import RunCommand, ListDir, ReadFile, ToolOutput
 from markitdown import MarkItDown, StreamInfo
+from pydantic import ValidationError
 
 _md = MarkItDown()
 # run_command, read_file, list_dir, finish
@@ -10,13 +11,14 @@ def run_command(cmd, EXECUTOR_CONTAINER):
     '''
     Executes a command in the executor container
     '''
+    try:
+        args = RunCommand(cmd=cmd)
 
-    args = ToolCall(
-        cmd=cmd
-    )
+    except ValidationError as e:
+        return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
     # TODO: Check policy
 
-    split_cmd = shlex.split(cmd)
+    split_cmd = shlex.split(args.cmd)
 
     try:
         cmd_output = subprocess.run(
@@ -31,13 +33,19 @@ def run_command(cmd, EXECUTOR_CONTAINER):
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
 
 
-def read_file(path, filetype, max_size, EXECUTOR_CONTAINER):
+def read_file(path, filetype, EXECUTOR_CONTAINER, max_size=1000):
     '''
     Read contents of a file inside a docker container
     '''
     try:
+        args = ReadFile(path=path, filetype=filetype)
+
+    except ValidationError as e:
+        return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
+
+    try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', EXECUTOR_CONTAINER, "cat", "--", path],
+            ['docker', 'exec', EXECUTOR_CONTAINER, "cat", "--", args.path],
             capture_output=True,
             text=True,
             timeout=60
@@ -45,12 +53,12 @@ def read_file(path, filetype, max_size, EXECUTOR_CONTAINER):
         if cmd_output.returncode != 0:
             return ToolOutput(status=False, stdout="", stderr=cmd_output.stderr)
 
-        ext = filetype.lower() if "." in path else None
+        ext = args.filetype.lower() if "." in path else None
         print(ext)
         if ext == "pdf" or ext == "docx":
             result = _md.convert_stream(io.BytesIO(cmd_output.stdout), stream_info=StreamInfo(extension=ext))
             
-            return ToolOutput(status=True, stdout=result.text_content[:30_000], stderr="")
+            return ToolOutput(status=True, stdout=result.text_content[:max_size], stderr="")
         else:
             return ToolOutput(status=True, stdout=cmd_output.stdout, stderr="")
 
@@ -61,10 +69,15 @@ def list_dir(path, EXECUTOR_CONTAINER):
     '''
     List a directory inside a docker container
     '''
-    completed = False
+    try:
+        args = ListDir(path=path)
+
+    except ValidationError as e:
+        return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
+
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', EXECUTOR_CONTAINER, "ls -lha", path],
+            ['docker', 'exec', EXECUTOR_CONTAINER, "ls -lha", args.path],
             capture_output=True,
             text=True,
             timeout=60
