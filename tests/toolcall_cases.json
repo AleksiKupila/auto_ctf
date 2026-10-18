@@ -1,0 +1,80 @@
+[
+  {
+    "id": "echo_basic",
+    "tool": "run_command",
+    "arguments": {"cmd": "echo hello"},
+    "expect": {"status": true, "stdout_contains": "hello"}
+  },
+  {
+    "id": "pipe",
+    "tool": "run_command",
+    "arguments": {"cmd": "printf 'a\\nflag{x}\\nb\\n' | grep flag"},
+    "expect": {"status": true, "stdout_contains": "flag{x}", "stdout_not_contains": "a\n"}
+  },
+  {
+    "id": "chain_and_redirect",
+    "tool": "run_command",
+    "arguments": {"cmd": "mkdir -p /tmp/t && echo ok > /tmp/t/f && cat /tmp/t/f"},
+    "expect": {"status": true, "stdout_contains": "ok"}
+  },
+  {
+    "id": "runs_as_unprivileged_user",
+    "tool": "run_command",
+    "arguments": {"cmd": "whoami"},
+    "expect": {"status": true, "stdout_contains": "scanner"}
+  },
+  {
+    "id": "stderr_captured",
+    "tool": "run_command",
+    "arguments": {"cmd": "echo oops >&2"},
+    "expect": {"status": true, "stderr_contains": "oops"}
+  },
+  {
+    "id": "nonzero_exit",
+    "tool": "run_command",
+    "arguments": {"cmd": "ls /does/not/exist"},
+    "expect": {"status": false}
+  },
+  {
+    "id": "command_not_found",
+    "tool": "run_command",
+    "arguments": {"cmd": "definitelynotacommand"},
+    "expect": {"status": false}
+  },
+  {
+    "id": "unbalanced_quote_does_not_crash",
+    "tool": "run_command",
+    "arguments": {"cmd": "echo 'unterminated"},
+    "expect": {"status": false}
+  },
+  {
+    "id": "unknown_tool",
+    "tool": "delete_everything",
+    "arguments": {},
+    "expect": {"status": false, "stderr_contains": "Unknown tool"}
+  },
+  {
+    "id": "malformed_json",
+    "tool": "run_command",
+    "raw_arguments": "{\"cmd\": \"ls",
+    "expect": {"status": false, "stderr_contains": "Invalid arguments"}
+  },
+  {
+    "id": "missing_argument",
+    "tool": "run_command",
+    "arguments": {},
+    "expect": {"status": false, "stderr_contains": "Invalid arguments"}
+  },
+  {
+    "id": "extra_argument",
+    "tool": "run_command",
+    "arguments": {"cmd": "ls", "sudo": true},
+    "expect": {"status": false, "stderr_contains": "Invalid arguments"}
+  },
+  {
+    "id": "wrong_type",
+    "tool": "run_command",
+    "arguments": {"cmd": 123},
+    "expect": {"status": false, "stderr_contains": "ValidationError"}
+  }
+]

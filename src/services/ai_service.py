@@ -1,101 +1,43 @@
 from typing import Optional
-from src.llm.ollama_client import (
-    OllamaModelClient,
-    ModelClientError,
-    OllamaConnectionError,
-    ModelNotFoundError,
-)
-from src.llm.openai_compat import (
-    ModelClient
-)
+
 from src.schemas.responses import UserRequest, AIResponse
+from src.agent.context import ContextManager
+from src.agent.loop import Agent
+from src.tools.registry import tool_schemas, execute
+from src.llm.openai_compat import ModelClient
+from src.config import config
+
+config = config
 
 
+class Session:
+    def __init__(self, agent: Agent, session_id=1,):
+        self.agent = agent
+        self.id = session_id
 class AIService:
     """
     Application service layer responsible for validating user input,
     orchestrating model client requests, and catching exceptions gracefully.
     """
 
-    def __init__(self, model_client: Optional[ModelClient] = None):
-        # Allow injecting custom/mock model_client for simple testing
+    def __init__(self, model_client: ModelClient, context: ContextManager, config):
+
+        self.llm, self.context, self.config = model_client, context, config,
         self.model_client = model_client
+        self.sessions = []
 
-    def _get_client(self):
-        """Returns active model client, initializing default client if none provided."""
-        if self.model_client is None:
-            self.model_client = ModelClient()
-
-        return self.model_client
-
-    def process_message(self, user_message: str) -> AIResponse:
-        """
-        Processes a raw user message string and returns a structured AIResponse.
-        Catches technical failures and converts them to friendly user-facing messages.
-        """
-        # 1. Validate empty input
-        if not user_message or not user_message.strip():
-            return AIResponse(
-                content="Please enter a message before sending.",
-                success=False,
-                error_message="User message was empty.",
-            )
-
-        try:
-            # 2. Schema validation
-            request = UserRequest(message=user_message.strip())
-
-            # 3. Call model client
-            client = self._get_client()
-            response_text = client.generate(request.message)
-
-            return AIResponse(
-                content=response_text,
-                success=True,
-            )
-
-        except OllamaConnectionError as err:
-            return AIResponse(
-                content=(
-                    "[Error] Could not connect to Ollama.\n\n"
-                    "Please verify that Ollama is installed and running locally on your machine."
-                ),
-                success=False,
-                error_message=str(err),
-            )
-
-        except ModelNotFoundError as err:
-            return AIResponse(
-                content=(
-                    f"[Error] The configured AI model is unavailable in Ollama.\n\n"
-                    f"Please verify your MODEL_NAME setting or run 'ollama run <model_name>'."
-                ),
-                success=False,
-                error_message=str(err),
-            )
-
-        except ModelClientError as err:
-            return AIResponse(
-                content="[Error] An unexpected communication error occurred with the AI model.",
-                success=False,
-                error_message=str(err),
-            )
-
-        except Exception as err:
-            return AIResponse(
-                content="[Error] An unexpected application error occurred.",
-                success=False,
-                error_message=str(err),
-            )
-
-
-def generate_response(user_message: str, service: Optional[AIService] = None) -> str:
-    """
-    Main reusable service entry point used by the UI layer.
-    
-    Accepts user input message, passes it to the AI service, and returns
-    the generated text response (or a friendly error message).
-    """
-    active_service = service or AIService()
-    response = active_service.process_message(user_message)
-    return response.content
+    def start_session(self):
+        '''
+        Starts a session
+        '''
+        agent = Agent(
+            llm=self.llm,
+            tools=tool_schemas(),
+            context=self.context,
+            container=self.config.executor_container
+        )
+        session = Session(agent)
+        
+        self.sessions.append(self.session)
+        
+        

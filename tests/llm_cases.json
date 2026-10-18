@@ -1,0 +1,55 @@
+[
+  {
+    "id": "plain_reply_no_tools",
+    "tools": false,
+    "messages": [
+      {"role": "system", "content": "You are a terse assistant."},
+      {"role": "user", "content": "Reply with only the word: pong"}
+    ],
+    "expect": {"content_contains_any": ["pong"], "no_tool_calls": true}
+  },
+  {
+    "id": "tool_call_list_dir",
+    "tools": true,
+    "messages": [
+      {"role": "system", "content": "You are an agent operating a Linux sandbox. Always act by calling exactly one tool."},
+      {"role": "user", "content": "List the files in /etc."}
+    ],
+    "expect": {"tool_call": {"names": ["run_command", "list_dir"], "args_required_any": [["cmd"], ["path"]]}}
+  },
+  {
+    "id": "tool_call_run_command",
+    "tools": true,
+    "messages": [
+      {"role": "system", "content": "You are an agent operating a Linux sandbox. Always act by calling exactly one tool."},
+      {"role": "user", "content": "Check which user you are running as."}
+    ],
+    "expect": {"tool_call": {"names": ["run_command"], "args_required_any": [["cmd"]]}}
+  },
+  {
+    "id": "uses_tool_result",
+    "tools": true,
+    "messages": [
+      {"role": "system", "content": "You are an agent operating a Linux sandbox."},
+      {"role": "user", "content": "Find the flag in /home/agent/flag.txt and tell me what it is."},
+      {"role": "assistant", "content": null, "tool_calls": [
+        {"id": "call_1", "type": "function",
+         "function": {"name": "run_command", "arguments": "{\"cmd\": \"cat /home/agent/flag.txt\"}"}}
+      ]},
+      {"role": "tool", "tool_call_id": "call_1", "content": "stdout:\nflag{abc123}\nstderr:\n"}
+    ],
+    "expect": {"content_or_args_contains": "flag{abc123}"}
+  },
+  {
+    "id": "empty_messages",
+    "tools": true,
+    "messages": [],
+    "expect": {"error": true}
+  },
+  {
+    "id": "invalid_role",
+    "tools": false,
+    "messages": [{"role": "wizard", "content": "hello"}],
+    "expect": {"error": true}
+  }
+]

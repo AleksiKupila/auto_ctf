@@ -1,13 +1,37 @@
 import shlex, io
 import subprocess
-from src.tools.registry import RunCommand, ListDir, ReadFile, ToolOutput
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from markitdown import MarkItDown, StreamInfo
 from pydantic import ValidationError
+
+class RunCommand(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    cmd: str = Field(min_length=2, max_length=100)
+
+class ListDir(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    path: str = Field(min_length=2, max_length=100)
+
+class ReadFile(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    path: str = Field(min_length=2, max_length=100)
+    filetype: Literal["txt", "json", "md", "pdf", "docx"]
+
+class ToolOutput(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    status: bool
+    stdout: str
+    stderr: str
 
 _md = MarkItDown()
 # run_command, read_file, list_dir, finish
 
-def run_command(cmd, EXECUTOR_CONTAINER):
+def run_command(cmd, container):
     '''
     Executes a command in the executor container
     '''
@@ -16,24 +40,26 @@ def run_command(cmd, EXECUTOR_CONTAINER):
 
     except ValidationError as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
-    # TODO: Check policy
 
     split_cmd = shlex.split(args.cmd)
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', EXECUTOR_CONTAINER] + split_cmd,
+            ['docker', 'exec', '-u', 'scanner', container, 
+             'timeout', '200', 'bash', '-c', args.cmd],
             capture_output=True,
-            text=True,
-            timeout=60
+            text=True
         )
+        if cmd_output.returncode != 0:
+            return ToolOutput(status=False, stdout="", stderr=cmd_output.stderr)
+        
         return ToolOutput(status=True, stdout=cmd_output.stdout, stderr=cmd_output.stderr)
  
     except Exception as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
 
 
-def read_file(path, filetype, EXECUTOR_CONTAINER, max_size=1000):
+def read_file(path, filetype, container, max_size=1000):
     '''
     Read contents of a file inside a docker container
     '''
@@ -45,16 +71,16 @@ def read_file(path, filetype, EXECUTOR_CONTAINER, max_size=1000):
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', EXECUTOR_CONTAINER, "cat", "--", args.path],
+            ['docker', 'exec', '-u', 'scanner', container, 
+             'timeout', '60', 'bash', '-c', "cat", "--", args.path],
             capture_output=True,
-            text=True,
-            timeout=60
+            text=True
         )
         if cmd_output.returncode != 0:
             return ToolOutput(status=False, stdout="", stderr=cmd_output.stderr)
 
         ext = args.filetype.lower() if "." in path else None
-        print(ext)
+
         if ext == "pdf" or ext == "docx":
             result = _md.convert_stream(io.BytesIO(cmd_output.stdout), stream_info=StreamInfo(extension=ext))
             
@@ -65,7 +91,7 @@ def read_file(path, filetype, EXECUTOR_CONTAINER, max_size=1000):
     except Exception as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
 
-def list_dir(path, EXECUTOR_CONTAINER):
+def list_dir(path, container):
     '''
     List a directory inside a docker container
     '''
@@ -77,12 +103,14 @@ def list_dir(path, EXECUTOR_CONTAINER):
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', EXECUTOR_CONTAINER, "ls -lha", args.path],
+            ['docker', 'exec', '-u', 'scanner', container, 
+             'timeout', '60', 'bash', '-c', "ls -lha", args.path],
             capture_output=True,
-            text=True,
-            timeout=60
+            text=True
         )
-
+        if cmd_output.returncode != 0:
+            return ToolOutput(status=False, stdout="", stderr=cmd_output.stderr)
+        
         return ToolOutput(status=True, stdout=cmd_output.stdout, stderr="")
 
     except Exception as e:

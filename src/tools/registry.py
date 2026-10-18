@@ -1,66 +1,42 @@
-from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+import json
+from src.tools.handlers import (
+    RunCommand, 
+    ListDir, 
+    ReadFile, 
+    ToolOutput,
+    run_command,
+    list_dir,
+    read_file
+)
 
 # tool definitions + JSON schemas for the LLM
+TOOLS = {
+    "run_command": (run_command, RunCommand),
+    "read_file": (read_file, ReadFile),
+    "list_dir": (list_dir, ListDir)
+}
 
-class RunCommand(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+def tool_schemas():
 
-    cmd: str = Field(min_length=2, max_length=100)
+    return [{"type": "function", "function": {
+                "name": name,
+                "description": (function.__doc__ or "").strip(),
+                "parameters": model.model_json_schema()}}
+        for name, (function, model) in TOOLS.items()]
 
-class ListDir(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
 
-    path: str = Field(min_length=2, max_length=100)
+def execute(name, raw_args, container):
+    '''
+    Call a handler if tool exists
+    '''
+    if name not in TOOLS:
+        return ToolOutput(status=False, stdout="",
+                          stderr=f"Unknown tool '{name}'. Available: {list(TOOLS)}")
 
-class ReadFile(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+    function, _ = TOOLS[name]
 
-    path: str = Field(min_length=2, max_length=100)
-    filetype: Literal["txt", "json", "md", "pdf", "docx"]
-
-class ToolOutput(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    status: bool
-    stdout: str
-    stderr: str
+    try:
+        return function(**json.loads(raw_args), container = container)
     
-
-RUN_COMMAND = {
-    "type": "function",
-    "function": {
-        "name": "run_command",
-        "description": (
-            "Execute a Linux command"
-            "in a sandboxed docker environment"
-        ),
-        "parameters": RunCommand.model_json_schema(),
-    },
-}
-
-LIST_DIR = {
-    "type": "function",
-    "function": {
-        "name": "list_dir",
-        "description": (
-            "Lists a directory"
-            "in a sandboxed docker environment"
-        ),
-        "parameters": ListDir.model_json_schema(),
-    },
-}
-
-READ_FILE = {
-    "type": "function",
-    "function": {
-        "name": "read_file",
-        "description": (
-            "Reads a file"
-            "in a sandboxed docker environment"
-        ),
-        "parameters": ReadFile.model_json_schema(),
-    },
-}
-
-#AVAILABLE_TOOLS = {[RUN_COMMAND, LIST_DIR, READ_FILE]}
+    except Exception as e:   # bad JSON or wrong/extra kwargs
+        return ToolOutput(status=False, stdout="", stderr=f"Invalid arguments: {e}")
