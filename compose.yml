@@ -2,6 +2,7 @@ services:
 
   dvwa:
     image: vulnerables/web-dvwa
+    container_name: dvwa
     networks: [sandbox]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/80' || exit 1"]

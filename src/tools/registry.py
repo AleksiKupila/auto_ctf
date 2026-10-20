@@ -45,6 +45,7 @@ def execute(toolcall, container):
     try:
         output = function(**args.model_dump(), container = container)
         print(f"Stdout:\n\n {output.stdout}\n")
+        print(f"Stderr: {output.stderr}")
         return output
     
     except Exception as e:   # bad JSON or wrong/extra kwargs

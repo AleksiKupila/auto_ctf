@@ -39,15 +39,14 @@ def run_command(cmd, container):
         args = RunCommand(cmd=cmd)
 
     except ValidationError as e:
-        return ToolOutput(
-                        status=False, 
-                        stdout="", 
-                        stderr=f"{type(e).__name__}: {e}")
+        return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
+
+    split_cmd = shlex.split(args.cmd)
 
     try:
         cmd_output = subprocess.run(
             ['docker', 'exec', '-u', 'scanner', container, 
-             'timeout', '60', args.cmd],
+             'timeout', '120', 'bash', '-c', args.cmd],
             capture_output=True,
             text=True
         )

@@ -56,7 +56,7 @@ def test_client():
    return ModelClient(tools=tool_schemas())
 
 def test_context():
-   return ContextManager(sys_message(), "Help the developer test the agentic loop by exploring system directories", 10000, count_tokens)
+   return ContextManager(sys_message(), "Explore weaknesses of the target machine, dvwa using Nikto and Nmap", 10000, count_tokens)
 
 if __name__=="__main__":
    agent = Agent()
