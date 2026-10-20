@@ -8,6 +8,8 @@ from src.tools.handlers import (
     list_dir,
     read_file
 )
+from pydantic import ValidationError
+
 
 # tool definitions + JSON schemas for the LLM
 TOOLS = {
@@ -25,18 +27,25 @@ def tool_schemas():
         for name, (function, model) in TOOLS.items()]
 
 
-def execute(name, raw_args, container):
+def execute(toolcall, container):
     '''
     Call a handler if tool exists
     '''
+    name = toolcall["function"]["name"]
     if name not in TOOLS:
         return ToolOutput(status=False, stdout="",
                           stderr=f"Unknown tool '{name}'. Available: {list(TOOLS)}")
 
-    function, _ = TOOLS[name]
+    function, model = TOOLS[name]
 
     try:
-        return function(**json.loads(raw_args), container = container)
+        args = model.model_validate_json(toolcall["function"]["arguments"] or {})
+    except ValidationError as e:
+        return ToolOutput(status=False, stdout="", stderr=f"Invalid arguments for {name}: {e}")
+    try:
+        output = function(**args.model_dump(), container = container)
+        print(f"Stdout:\n\n {output.stdout}\n")
+        return output
     
     except Exception as e:   # bad JSON or wrong/extra kwargs
         return ToolOutput(status=False, stdout="", stderr=f"Invalid arguments: {e}")

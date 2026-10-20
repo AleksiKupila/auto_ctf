@@ -13,13 +13,13 @@ class RunCommand(BaseModel):
 class ListDir(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    path: str = Field(min_length=2, max_length=100)
+    path: str = Field(min_length=1, max_length=100)
 
 class ReadFile(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    path: str = Field(min_length=2, max_length=100)
-    filetype: Literal["txt", "json", "md", "pdf", "docx"]
+    path: str = Field(min_length=1, max_length=100)
+    filetype: Literal["txt", "json", "md", "pdf", "docx", "py", "html", "js", "css"]
 
 class ToolOutput(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
@@ -39,14 +39,15 @@ def run_command(cmd, container):
         args = RunCommand(cmd=cmd)
 
     except ValidationError as e:
-        return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
-
-    split_cmd = shlex.split(args.cmd)
+        return ToolOutput(
+                        status=False, 
+                        stdout="", 
+                        stderr=f"{type(e).__name__}: {e}")
 
     try:
         cmd_output = subprocess.run(
             ['docker', 'exec', '-u', 'scanner', container, 
-             'timeout', '200', 'bash', '-c', args.cmd],
+             'timeout', '60', args.cmd],
             capture_output=True,
             text=True
         )
@@ -72,7 +73,7 @@ def read_file(path, filetype, container, max_size=1000):
     try:
         cmd_output = subprocess.run(
             ['docker', 'exec', '-u', 'scanner', container, 
-             'timeout', '60', 'bash', '-c', "cat", "--", args.path],
+             'timeout', '60', "cat", args.path],
             capture_output=True,
             text=True
         )
@@ -97,14 +98,13 @@ def list_dir(path, container):
     '''
     try:
         args = ListDir(path=path)
-
     except ValidationError as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
 
     try:
         cmd_output = subprocess.run(
             ['docker', 'exec', '-u', 'scanner', container, 
-             'timeout', '60', 'bash', '-c', "ls -lha", args.path],
+             'timeout', '60', 'ls', '-la', args.path],
             capture_output=True,
             text=True
         )

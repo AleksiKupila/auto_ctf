@@ -1,3 +1,7 @@
+from src.tools.handlers import ToolOutput
+from src.agent.parser import Tool_message
+import json
+
 # message building, output truncation, history trimming
 
 
@@ -10,30 +14,47 @@ class ContextManager:
             {"role": "user", "content": goal}
        ]
        self.turns = []
+       self.max_tokens = max_tokens
        self.max_tool_chars = max_tool_chars
        self.count_tokens = count_tokens
        self.dropped = 0
 
-    def add_assistant(self, msg: dict):
-        self.turns.append([dict(msg)])
+    def add_assistant(self, msg):
+        self.turns.append([msg])
 
-    def add_tool_result(self, msg: dict):
+    def add_tool_result(self, tool_message: Tool_message):
         '''
-        Add tool result, truncate if length exceeds max_tool_chars
+        Add tool result
         '''
-        c = msg["content"]
 
-        if len(c) > self.max_tool_chars:
+        content = (
+            f"status: {'success' if tool_message.status else 'failed'}\n"
+            f"stdout \n{self._truncate(tool_message.stdout) or '(empty)'}\n"
+            f"stderr \n{self._truncate(tool_message.stderr) or '(empty)'}\n"
+        )
+        self.turns[-1].append({
+            "role": "tool",
+            "tool_call_id": tool_message.id,
+            "content": content,
+        })
+
+
+    def _truncate(self, stdout):
+         
+        if len(stdout) > self.max_tool_chars:
             half = self.max_tool_chars // 2
-            c = f"{c[:half]}\n...[{len(c) - self.max_tool_chars} chars truncated]...\n{c[-half:]}"
+            stdout = f"{stdout[:half]}\n...[{len(stdout) - self.max_tool_chars} chars truncated]...\n{stdout[-half:]}"
 
-        self.turns[-1].append({**msg, "content": c})
+        return stdout
 
     def _size(self, messages):
 
         total = 0
         for m in messages:
-            total += self.count_tokens(str(m.get("content", ""))) + 4
+            text = str(m.get("content") or "")
+            if m.get("tool_calls"):
+                text += json.dumps(m["tool_calls"])
+            total += self.count_tokens(str(text)) + 4
 
         return total
 
@@ -43,6 +64,4 @@ class ContextManager:
             self.turns.pop(0)
             self.dropped += 1
 
-        head = list(self.head)
-
-        return head + body()
+        return list(self.head) + body()

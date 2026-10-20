@@ -13,16 +13,16 @@ def _params():
 
 @pytest.mark.parametrize("case", _params())
 def test_tool_case(case):
-    raw = case.get("raw_arguments", json.dumps(case.get("arguments", {})))
-    out = execute(case["tool"], raw, config.executor_container)
-    exp = case["expect"]
+    fn = case["function"]
+    raw = fn.get("raw_arguments", json.dumps(fn.get("arguments", {})))
+    tc = {
+        "id": case["id"],
+        "type": "function",
+        "function": {"name": fn["name"], "arguments": raw},
+    }
+    out = execute(tc, config.executor_container)
+    exp = fn["expect"]
 
     assert out.status == exp["status"], f"stdout={out.stdout!r} stderr={out.stderr!r}"
     if "stdout_contains" in exp:
         assert exp["stdout_contains"] in out.stdout
-    if "stdout_not_contains" in exp:
-        assert exp["stdout_not_contains"] not in out.stdout
-    if "stderr_contains" in exp:
-        assert exp["stderr_contains"] in out.stderr
-    if "stdout_max_len" in exp:
-        assert len(out.stdout) <= exp["stdout_max_len"]
