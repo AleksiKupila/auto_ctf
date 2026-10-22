@@ -17,13 +17,13 @@ class ModelClient:
                   max_retries=1
             )
 
-    def generate(self, prompt: list) -> str:
+    def generate(self, prompt: list, use_tools: bool) -> str:
 
-        try:
+        try:    
                 response = self._client.chat.completions.create(
                         model=self.model_name,
                         messages=prompt,
-                        tools=self.tools,
+                        tools=self.tools if use_tools else [],
                         stream=False
                 )
 

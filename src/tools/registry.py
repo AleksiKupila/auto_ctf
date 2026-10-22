@@ -4,9 +4,11 @@ from src.tools.handlers import (
     ListDir, 
     ReadFile, 
     ToolOutput,
+    Finish,
     run_command,
     list_dir,
-    read_file
+    read_file,
+    finish
 )
 from pydantic import ValidationError
 
@@ -15,7 +17,8 @@ from pydantic import ValidationError
 TOOLS = {
     "run_command": (run_command, RunCommand),
     "read_file": (read_file, ReadFile),
-    "list_dir": (list_dir, ListDir)
+    "list_dir": (list_dir, ListDir),
+    'finish': (finish, Finish)
 }
 
 def get_tools():
@@ -36,6 +39,7 @@ def execute(toolcall, container):
     '''
     function, _ = TOOLS[toolcall.name]
     try:
+        print(f"Running tool: {toolcall.name}, {toolcall.args}...\n")
         output = function(**toolcall.args, container = container)
         output.id, output.role = toolcall.id, toolcall.role
         print(f"Stdout:\n\n {output.stdout}\n")

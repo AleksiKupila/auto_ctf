@@ -22,7 +22,7 @@ def parse_message(message):
 
     parsed = []
     TOOLS = get_tools()
-
+    
     for call in message.get("tool_calls"):
 
         needs_approval = False
@@ -51,6 +51,15 @@ def parse_message(message):
         parsed.append(ToolCall(id=id, role="tool", name=name, args=args, valid=valid, invalid_reason=invalid_reason, needs_approval=needs_approval))
 
     return parsed
+
+def clean_message(message):
+    finish = False
+    for call in message.get("tool_calls"):
+        if call["function"]["name"] == "finish":
+            message.update({"content": ""})
+            finish = True
+
+    return message, finish
 
 def fetch_msg(resp):
     return resp.choices[0].message.model_dump(exclude_none=True) # Get message from response

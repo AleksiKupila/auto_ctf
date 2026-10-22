@@ -21,6 +21,11 @@ class ReadFile(BaseModel):
     path: str = Field(min_length=1, max_length=100)
     filetype: Literal["txt", "json", "md", "pdf", "docx", "py", "html", "js", "css"]
 
+class Finish(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    reason: str
+    finished: bool
 class ToolOutput(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
@@ -115,5 +120,8 @@ def list_dir(path, container):
     except Exception as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
 
-def finish(summary, answer):
+def finish():
+    '''
+    Finish the task
+    '''
     return

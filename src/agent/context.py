@@ -1,4 +1,5 @@
 from src.tools.handlers import ToolOutput
+from src.agent.prompts import build_finish_message
 import json
 
 # message building, output truncation, history trimming
@@ -12,6 +13,9 @@ class ContextManager:
             {"role": "system", "content": system_message},
             {"role": "user", "content": goal}
        ]
+       self.system_message = system_message
+       self.finish_reason = None
+       self.finish_status = None
        self.turns = []
        self.max_tokens = max_tokens
        self.max_tool_chars = max_tool_chars
@@ -20,6 +24,12 @@ class ContextManager:
 
     def add_assistant(self, msg):
         self.turns.append([msg])
+
+    def add_user_message(self, content):
+        self.turns.append({
+            "role": "user",
+            "content": content,
+        })
 
     def add_tool_result(self, tool_message: ToolOutput):
         '''
@@ -35,7 +45,6 @@ class ContextManager:
             "tool_call_id": tool_message.id,
             "content": content,
         })
-
 
     def _truncate(self, text):
          
@@ -56,6 +65,12 @@ class ContextManager:
 
         return total
 
+    def set_head(self, content):
+        self.head = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": content}
+       ]
+
     def fetch_context(self):
         body = lambda: [m for t in self.turns for m in t]
         while len(self.turns) > 1 and self._size(self.head + body()) > self.max_tokens:
@@ -63,3 +78,16 @@ class ContextManager:
             self.dropped += 1
 
         return list(self.head) + body()
+
+    def final_analysis_context(self):
+        goal = self.head[1].get("content")
+        body = lambda: [m for t in self.turns for m in t]
+        reason, status = self.finish_reason, self.finish_status
+
+        final_message = build_finish_message(goal, reason, status, body())
+
+
+        return [{
+            "role": "user",
+            "content": final_message,
+        }]
