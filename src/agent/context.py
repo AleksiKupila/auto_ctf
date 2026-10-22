@@ -1,5 +1,4 @@
 from src.tools.handlers import ToolOutput
-from src.agent.parser import Tool_message
 import json
 
 # message building, output truncation, history trimming
@@ -22,11 +21,10 @@ class ContextManager:
     def add_assistant(self, msg):
         self.turns.append([msg])
 
-    def add_tool_result(self, tool_message: Tool_message):
+    def add_tool_result(self, tool_message: ToolOutput):
         '''
-        Add tool result
+        Add tool result in a format that the server accepts
         '''
-
         content = (
             f"status: {'success' if tool_message.status else 'failed'}\n"
             f"stdout \n{self._truncate(tool_message.stdout) or '(empty)'}\n"
@@ -39,13 +37,13 @@ class ContextManager:
         })
 
 
-    def _truncate(self, stdout):
+    def _truncate(self, text):
          
-        if len(stdout) > self.max_tool_chars:
+        if len(text) > self.max_tool_chars:
             half = self.max_tool_chars // 2
-            stdout = f"{stdout[:half]}\n...[{len(stdout) - self.max_tool_chars} chars truncated]...\n{stdout[-half:]}"
+            text = f"{text[:half]}\n...[{len(text) - self.max_tool_chars} chars truncated]...\n{text[-half:]}"
 
-        return stdout
+        return text
 
     def _size(self, messages):
 

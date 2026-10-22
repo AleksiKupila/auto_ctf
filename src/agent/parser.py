@@ -1,66 +1,56 @@
 from src.tools.registry import execute
+from typing import Any
 from src.tools.handlers import ToolOutput
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError, Field
+from src.tools.registry import get_tools
 
 # tool-call validation + single repair attempt
-class Tool_message(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
+class ToolCall(BaseModel):
 
     id: str
     role: str
-    status: bool
-    stdout: str
-    stderr: str
+    name: str
+    args: dict[str, Any] = Field(default_factory=dict)
+    valid: bool = True
+    invalid_reason: str | None=None
+    needs_approval: bool = False
 
+def parse_message(message):
+    '''
+    Parses a LLM message into toolcalls
+    '''
 
-def parse(message, container):
+    parsed = []
+    TOOLS = get_tools()
 
-    print(f"Assistant:\n")
-    print(message.get("content"))
-
-    tool_messages = []
     for call in message.get("tool_calls"):
 
-        call_id = call["id"]
-        tool = call["function"]
-        name = tool["name"]
-        args = tool["arguments"]
+        needs_approval = False
+        valid = True
+        invalid_reason = ""
 
-        print(f"Model called tool: {name}, args: {args}\n")
+        if "run_command" == call["function"]["name"]:
+            needs_approval = True
 
-        if name == "run_command":
-            accept = input("Run command? (y/n) ")
+        id = call["id"]
+        name = call["function"]["name"]
 
-            if accept.lower() == "y":
-                try:
-                    output = execute(call, container)
-                    tool_messages.append(
-                        Tool_message(id=call_id, status=output.status, role="tool", stdout=output.stdout, stderr=output.stderr)
-                        )
+        if name not in TOOLS:
+            valid = False
+            invalid_reason =f"Unknown tool '{name}'. Available: {list(TOOLS)}"
 
-                
-                except Exception  as e:
-                    output = ToolOutput(status=False, stdout="", stderr=f"Tool execution error: {e}")
-                    tool_messages.append(
-                        Tool_message(id=call_id, status=output.status, role="tool", stdout=output.stdout, stderr=output.stderr)
-                    )
+        _, model = TOOLS[name]
 
+        try:
+            args = model.model_validate_json(call["function"]["arguments"] or {}).model_dump()
 
-            else:
-                output = ToolOutput(status=False, stdout="", stderr=f"User refused command")
-                tool_messages.append(id=call_id, status=output.status, role="tool", stdout=output.stdout, stderr=output.stderr)
-                
-        else:
-            try:
-                output = execute(call, container)
-                tool_messages.append(
-                    Tool_message(id=call_id, status=output.status, role="tool", stdout=output.stdout, stderr=output.stderr)
-                )
-            
-            except Exception  as e:
-                output = ToolOutput(status=False, stdout="", stderr=f"Tool execution error: {e}")
-                tool_messages.append(
-                    Tool_message(id=call_id, status=output.status, role="tool", stdout=output.stdout, stderr=output.stderr)
-                )
+        except ValidationError as e:
+            valid = False
+            invalid_reason = f"Invalid arguments for {name}: {e}"
+        
+        parsed.append(ToolCall(id=id, role="tool", name=name, args=args, valid=valid, invalid_reason=invalid_reason, needs_approval=needs_approval))
 
-    return tool_messages
+    return parsed
+
+def fetch_msg(resp):
+    return resp.choices[0].message.model_dump(exclude_none=True) # Get message from response

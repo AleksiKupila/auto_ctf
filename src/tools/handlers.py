@@ -1,6 +1,6 @@
 import shlex, io
 import subprocess
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from markitdown import MarkItDown, StreamInfo
 from pydantic import ValidationError
@@ -24,6 +24,8 @@ class ReadFile(BaseModel):
 class ToolOutput(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
+    id: Optional[str] = None
+    role: Optional[str] = None
     status: bool
     stdout: str
     stderr: str
@@ -40,8 +42,6 @@ def run_command(cmd, container):
 
     except ValidationError as e:
         return ToolOutput(status=False, stdout="", stderr=f"{type(e).__name__}: {e}")
-
-    split_cmd = shlex.split(args.cmd)
 
     try:
         cmd_output = subprocess.run(

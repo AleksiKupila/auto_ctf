@@ -24,7 +24,7 @@ class AIService:
 
         self.llm, self.context, self.config = model_client, context, config,
         self.model_client = model_client
-        self.sessions = []
+        self.agent, self.agent
 
     def start_session(self):
         '''
@@ -36,8 +36,11 @@ class AIService:
             context=self.context,
             container=self.config.executor_container
         )
-        session = Session(agent)
+        self.session = Session(agent)
+        self.agent = agent
         
-        self.sessions.append(self.session)
+    def step_agent(self):
+
+        yield self.agent.step()
         
         

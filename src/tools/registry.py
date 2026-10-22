@@ -18,6 +18,9 @@ TOOLS = {
     "list_dir": (list_dir, ListDir)
 }
 
+def get_tools():
+    return TOOLS
+
 def tool_schemas():
 
     return [{"type": "function", "function": {
@@ -31,22 +34,12 @@ def execute(toolcall, container):
     '''
     Call a handler if tool exists
     '''
-    name = toolcall["function"]["name"]
-    if name not in TOOLS:
-        return ToolOutput(status=False, stdout="",
-                          stderr=f"Unknown tool '{name}'. Available: {list(TOOLS)}")
-
-    function, model = TOOLS[name]
-
+    function, _ = TOOLS[toolcall.name]
     try:
-        args = model.model_validate_json(toolcall["function"]["arguments"] or {})
-    except ValidationError as e:
-        return ToolOutput(status=False, stdout="", stderr=f"Invalid arguments for {name}: {e}")
-    try:
-        output = function(**args.model_dump(), container = container)
+        output = function(**toolcall.args, container = container)
+        output.id, output.role = toolcall.id, toolcall.role
         print(f"Stdout:\n\n {output.stdout}\n")
-        print(f"Stderr: {output.stderr}")
         return output
     
     except Exception as e:   # bad JSON or wrong/extra kwargs
-        return ToolOutput(status=False, stdout="", stderr=f"Invalid arguments: {e}")
+        return ToolOutput(id=toolcall.id, role=toolcall.role, status=False, stdout="", stderr=f"Invalid arguments: {e}")
