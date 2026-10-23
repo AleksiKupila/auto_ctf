@@ -19,7 +19,7 @@ class Config:
 
     max_steps: int = 100
     max_tool_retries: int = 2
-    model_timeout: int = 100
+    model_timeout: int = 300
     max_context_tokens = 8000
     max_tool_chars = 1000
     
