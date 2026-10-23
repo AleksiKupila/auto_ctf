@@ -8,17 +8,17 @@ from pydantic import ValidationError
 class RunCommand(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    cmd: str = Field(min_length=2, max_length=100)
+    cmd: str = Field(min_length=2, max_length=1000)
 
 class ListDir(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    path: str = Field(min_length=1, max_length=100)
+    path: str = Field(min_length=1, max_length=1000)
 
 class ReadFile(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
-    path: str = Field(min_length=1, max_length=100)
+    path: str = Field(min_length=1, max_length=1000)
     filetype: Literal["txt", "json", "md", "pdf", "docx", "py", "html", "js", "css"]
 
 class Finish(BaseModel):
@@ -50,7 +50,7 @@ def run_command(cmd, container):
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', '-u', 'scanner', container, 
+            ['docker', 'exec', '-u', 'target', container, 
              'timeout', '120', 'bash', '-c', args.cmd],
             capture_output=True,
             text=True
@@ -76,7 +76,7 @@ def read_file(path, filetype, container, max_size=1000):
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', '-u', 'scanner', container, 
+            ['docker', 'exec', '-u', 'target', container, 
              'timeout', '60', "cat", args.path],
             capture_output=True,
             text=True
@@ -107,7 +107,7 @@ def list_dir(path, container):
 
     try:
         cmd_output = subprocess.run(
-            ['docker', 'exec', '-u', 'scanner', container, 
+            ['docker', 'exec', '-u', 'target', container, 
              'timeout', '60', 'ls', '-la', args.path],
             capture_output=True,
             text=True
@@ -124,4 +124,4 @@ def finish():
     '''
     Finish the task
     '''
-    return
+    return 

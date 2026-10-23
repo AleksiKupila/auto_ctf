@@ -58,8 +58,10 @@ class Agent():
 
       elif self.status == "WAITING_APPROVAL":   # A pending request/decision
          if self.current_request.decision == True: # If approved, execute and add to tool_outputs
-            output = execute(self.current_request.tool_call, self.container)
-            self.tool_outputs.append(output)
+            try:
+               self.tool_outputs.append(execute(self.current_request.tool_call, self.container))
+            except Exception as e:
+               self.tool_outputs.append(ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr=str(e)))
 
          else: # Else, add an output with an error message
             self.tool_outputs.append(ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr="User refused command"))
@@ -69,7 +71,7 @@ class Agent():
          print(f"Agent status: 'RUNNING'")
 
       for call in self.pending_calls: # Handle finishing call
-         if call.name == "finish": 
+         if call.name == "finish" and call.valid: 
                if len(self.pending_calls) > 1 or self.tool_outputs: # If other calls in the same message, add output with error message
                   self.context.add_tool_result(ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr="Finishing tool call can't be called along with other tool calls"))
                   self.pending_calls.remove(call)
@@ -77,6 +79,7 @@ class Agent():
 
                self.context.add_tool_result(ToolOutput(id=call.id, role="tool", status=True, stdout=f"", stderr=""))
                self.context.finish_reason = call.args
+               self.pending_calls.clear()
                self.status = "FINISHED"
                print(f"Agent status: 'FINISHED'")
                return None
@@ -94,7 +97,10 @@ class Agent():
             self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=call.invalid_reason))
 
          else: # No problems, execute
-            self.tool_outputs.append(execute(call, self.container))
+            try:
+               self.tool_outputs.append(execute(call, self.container))
+            except Exception as e:
+               self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=str(e)))
          
          self.pending_calls.pop(0)  # Remove from queue
 
@@ -128,8 +134,19 @@ class Agent():
       self.status = "MAX_STEPS"
       return self.finish()
 
+   def _flush_pending(self, reason):
+      for call in self.pending_calls:
+         self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False,
+                                            stdout="", stderr=reason))
+      self.pending_calls.clear()
+
+      for output in self.tool_outputs:
+         self.context.add_tool_result(output)
+      self.tool_outputs.clear()
+
    def finish(self):
 
+      self._flush_pending(f"Not executed: agent stopped ({self.status})")
       self.context.finish_status = self.status
       prompt = self.context.final_analysis_context()
 

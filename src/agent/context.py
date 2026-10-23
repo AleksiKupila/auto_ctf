@@ -26,10 +26,10 @@ class ContextManager:
         self.turns.append([msg])
 
     def add_user_message(self, content):
-        self.turns.append({
+        self.turns.append([{
             "role": "user",
             "content": content,
-        })
+        }])
 
     def add_tool_result(self, tool_message: ToolOutput):
         '''

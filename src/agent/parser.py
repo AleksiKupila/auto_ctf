@@ -16,40 +16,29 @@ class ToolCall(BaseModel):
     needs_approval: bool = False
 
 def parse_message(message):
-    '''
-    Parses a LLM message into toolcalls
-    '''
-
     parsed = []
     TOOLS = get_tools()
-    
-    for call in message.get("tool_calls"):
 
-        needs_approval = False
-        valid = True
-        invalid_reason = ""
-
-        if "run_command" == call["function"]["name"]:
-            needs_approval = True
-
+    for call in message.get("tool_calls") or []:
         id = call["id"]
         name = call["function"]["name"]
+        raw = call["function"].get("arguments") or "{}"
 
         if name not in TOOLS:
-            valid = False
-            invalid_reason =f"Unknown tool '{name}'. Available: {list(TOOLS)}"
+            parsed.append(ToolCall(id=id, role="tool", name=name, valid=False,
+                invalid_reason=f"Unknown tool '{name}'. Available: {list(TOOLS)}"))
+            continue
 
         _, model = TOOLS[name]
-
         try:
-            args = model.model_validate_json(call["function"]["arguments"] or {}).model_dump()
-
+            args = model.model_validate_json(raw).model_dump()
         except ValidationError as e:
-            valid = False
-            invalid_reason = f"Invalid arguments for {name}: {e}"
-        
-        parsed.append(ToolCall(id=id, role="tool", name=name, args=args, valid=valid, invalid_reason=invalid_reason, needs_approval=needs_approval))
+            parsed.append(ToolCall(id=id, role="tool", name=name, valid=False,
+                invalid_reason=f"Invalid arguments for {name}: {e}"))
+            continue
 
+        parsed.append(ToolCall(id=id, role="tool", name=name, args=args,
+                               needs_approval=(name == "run_command")))
     return parsed
 
 def clean_message(message):

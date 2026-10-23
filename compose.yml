@@ -5,7 +5,7 @@ services:
     environment:
       - SCENARIO=${SCENARIO:-01-easy-flag}
     volumes:
-      - ./docker/scenarios:/scenarios:ro
+      - ./docker/scenarios:/root/scenarios:ro
     container_name: target
     networks: [sandbox]
 
@@ -15,9 +15,8 @@ services:
     environment:
       - SCENARIO=${SCENARIO:-01-easy-flag}
     volumes:
-      - ./docker/scenarios:/scenarios:ro
+      - ./docker/scenarios:/root/scenarios:ro
 
-    security_opt: ["no-new-privileges:true"]
     pids_limit: 128
     mem_limit: 512m
     cpus: 1.0

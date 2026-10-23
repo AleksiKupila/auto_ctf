@@ -4,8 +4,8 @@ Document your team's evaluation results below.
 
 ## Summary Overview
 
-- **Date of Evaluation:** YYYY-MM-DD
-- **Model Evaluated:** (e.g., `llama3.2`)
+- **Date of Evaluation:** 2026-10-23
+- **Model Evaluated:** (e.g., `Qwen3.8-27B`)
 - **Total Test Cases Executed:** 0
 - **Passed:** 0
 - **Failed:** 0

@@ -17,7 +17,7 @@ class Config:
     openai_base_url: str = "http://localhost:8080"
     openai_model_name: str = "Qwen3.8-27B"
 
-    max_steps: int = 50
+    max_steps: int = 100
     max_tool_retries: int = 2
     model_timeout: int = 100
     max_context_tokens = 8000

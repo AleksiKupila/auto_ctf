@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
-if [ -n "$SCENARIO" ] && [ -f "/scenarios/$SCENARIO/setup.sh" ]; then
+
+if [ -n "$SCENARIO" ] && [ -f "/root/scenarios/$SCENARIO/setup.sh" ]; then
   echo "[seed] applying scenario: $SCENARIO"
-  bash "/scenarios/$SCENARIO/setup.sh"
+  bash "/root/scenarios/$SCENARIO/setup.sh"
 fi
-exec "$@"
+
+exec setpriv --reuid=target --regid=target --init-groups --reset-env "$@"
