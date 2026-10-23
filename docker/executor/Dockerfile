@@ -1,27 +1,14 @@
-FROM alpine:3.19
+FROM debian:bookworm-slim
 
 # Install needed packages
-RUN apk update && apk add --no-cache nmap perl sudo shadow bash nikto nmap-nselibs nmap-scripts
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip python3-venv nmap curl netcat-traditional iproute2 iputils-ping openssh-client dnsutils && rm -rf /var/lib/apt/lists/*
 
-RUN chmod +x /usr/bin/nikto.pl \
- && ln -s /usr/bin/nikto.pl /usr/local/bin/nikto \
- && ln -s /usr/bin/nikto.pl /usr/bin/nikto
+RUN adduser --disabled-password --gecos "" scanner
 
-# RUN echo "#include /etc/sudoers.d" >> /etc/sudoers
-
-# Create user and group
-# RUN addgroup -S wheel || true
-RUN adduser -D -s /bin/bash scanner
-
-# Add the specific, passwordless sudo rule for the scanner user
-# RUN echo 'scanner ALL=(ALL) NOPASSWD: /usr/bin/nmap, /usr/local/bin/nikto' > /etc/sudoers.d/scanner \
- # && chmod 0440 /etc/sudoers.d/scanner
-
-# Switch to scanner user
 USER scanner
 WORKDIR /home/scanner
 
-RUN mkdir /home/scanner/tests/
+RUN mkdir -p /home/scanner/tests
 
 RUN echo "text file!" > /home/scanner/tests/test.txt
 

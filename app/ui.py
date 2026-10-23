@@ -3,6 +3,8 @@ from src.services.ai_service import generate_response
 
 
 def build_ui() -> gr.Blocks:
-
+    agent = gr.Chatbot(
+        
+    )
 
     return 

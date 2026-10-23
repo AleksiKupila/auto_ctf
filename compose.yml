@@ -1,21 +1,17 @@
 services:
 
-  dvwa:
-    image: vulnerables/web-dvwa
-    container_name: dvwa
+  target:
+    build: ./docker/target
+    environment:
+      - SCENARIO=${SCENARIO:-01-easy-flag}
+    volumes:
+      - ./docker/scenarios:/scenarios:ro
+    container_name: target
     networks: [sandbox]
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/80' || exit 1"]
-      interval: 5s
-      start_period: 30s
-      retries: 10
 
   executor:
     build: ./docker/executor
     container_name: command_executor
-    depends_on:
-      dvwa:
-        condition: service_healthy
 
     security_opt: ["no-new-privileges:true"]
     pids_limit: 128

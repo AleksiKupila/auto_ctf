@@ -9,3 +9,12 @@ reset-targets:    ## fresh DVWA + db state
 
 eval:
 	python -m eval.run_eval
+
+build:
+	docker compose build
+	
+executor:
+	docker compose up -d --build --wait executor
+
+scenario:
+	SCENARIO=$(S) docker compose up -d --force-recreate --no-deps target

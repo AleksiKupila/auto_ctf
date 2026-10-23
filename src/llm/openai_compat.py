@@ -29,5 +29,6 @@ class ModelClient:
 
                 return response
 
-        except Exception as e:
-              raise ConnectionError(e)
+        except ConnectionError as e:
+              print(f"LLM connection error: {e}")
+              return None

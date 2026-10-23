@@ -36,6 +36,11 @@ class Agent():
          prompt = self.context.fetch_context() # Fetch context for LLM
          resp = self.llm.generate(prompt, True) # Ask LLM
 
+         if not resp:
+            self.status = "CONNECTION_LOST"
+            print(f"Agent status: 'CONNECTION_LOST'")
+            return None
+
          message = fetch_msg(resp) # Get message from response
          cleaned_message, finish = clean_message(message)
 
@@ -104,7 +109,7 @@ class Agent():
 
       while self.step_count < self.max_steps:
 
-         if self.status == "FINISHED":
+         if self.status == "FINISHED" or self.status == "CONNECTION_LOST":
 
             return self.finish()
          
@@ -130,6 +135,10 @@ class Agent():
 
       print("Generating final analysis...")
       resp = self.llm.generate(prompt, False) 
+      
+      if not resp:
+         print("Failed generating final analysis (LLM connection failed)")
+         return None
 
       message = fetch_msg(resp) 
       print(f"Assistant:\n")
