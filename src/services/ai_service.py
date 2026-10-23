@@ -14,17 +14,15 @@ class Session:
     def __init__(self, agent: Agent, session_id=1,):
         self.agent = agent
         self.id = session_id
-class AIService:
+class AgentSession:
     """
-    Application service layer responsible for validating user input,
-    orchestrating model client requests, and catching exceptions gracefully.
+    Application service layer
     """
 
     def __init__(self, model_client: ModelClient, context: ContextManager, config):
 
         self.llm, self.context, self.config = model_client, context, config,
         self.model_client = model_client
-        self.agent, self.agent
 
     def start_session(self):
         '''
@@ -34,13 +32,13 @@ class AIService:
             llm=self.llm,
             tools=tool_schemas(),
             context=self.context,
-            container=self.config.executor_container
+            container=self.config.executor_container,
+            max_steps=self.config.max_steps
         )
         self.session = Session(agent)
-        self.agent = agent
-        
-    def step_agent(self):
+        analysis = agent.run()
 
-        yield self.agent.step()
+        return
+
         
         

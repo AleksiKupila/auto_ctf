@@ -1,5 +1,6 @@
 from src.tools.handlers import ToolOutput
 from src.agent.prompts import build_finish_message
+from src.agent.heuristics import count_tokens
 import json
 
 # message building, output truncation, history trimming
@@ -7,7 +8,7 @@ import json
 
 class ContextManager:
 
-    def __init__(self, system_message, goal, max_tokens, count_tokens, max_tool_chars=4000):
+    def __init__(self, system_message, goal, max_tokens, max_tool_chars=4000):
 
        self.head = [
             {"role": "system", "content": system_message},
@@ -19,7 +20,6 @@ class ContextManager:
        self.turns = []
        self.max_tokens = max_tokens
        self.max_tool_chars = max_tool_chars
-       self.count_tokens = count_tokens
        self.dropped = 0
 
     def add_assistant(self, msg):
@@ -61,7 +61,7 @@ class ContextManager:
             text = str(m.get("content") or "")
             if m.get("tool_calls"):
                 text += json.dumps(m["tool_calls"])
-            total += self.count_tokens(str(text)) + 4
+            total += count_tokens(str(text)) + 4
 
         return total
 

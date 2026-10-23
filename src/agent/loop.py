@@ -10,10 +10,6 @@ from src.llm.openai_compat import (
 )
 from src.tools.registry import tool_schemas, execute
 from src.config import config
-
-# TESTING
-exec_container = config.executor_container
-
 class Approval_request():
    def __init__(self, tool_call):
 
@@ -21,13 +17,13 @@ class Approval_request():
       self.decision = None
 class Agent():
       
-   def __init__(self):
-      self.llm = test_client()
-      self.context = test_context()
-      self.tools = tool_schemas()
-      self.step_count = 50
-      self.max_steps = 2
-      self.container = exec_container
+   def __init__(self, llm: ModelClient, context: ContextManager, tools, max_steps: int, container):
+      self.llm = llm
+      self.context = context
+      self.tools = tools
+      self.step_count = 0
+      self.max_steps = max_steps
+      self.container = container
 
       self.status = "RUNNING"
       self.current_request = None
@@ -141,13 +137,3 @@ class Agent():
 
       return message.get("content")
    
-# TESTS
-def test_client():
-   return ModelClient(tools=tool_schemas())
-
-def test_context():
-   return ContextManager(sys_message(), "Explore the home directory and its files", 10000, count_tokens)
-
-if __name__=="__main__":
-   agent = Agent()
-   final_answer = agent.run()
