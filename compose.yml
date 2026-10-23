@@ -12,6 +12,10 @@ services:
   executor:
     build: ./docker/executor
     container_name: command_executor
+    environment:
+      - SCENARIO=${SCENARIO:-01-easy-flag}
+    volumes:
+      - ./docker/scenarios:/scenarios:ro
 
     security_opt: ["no-new-privileges:true"]
     pids_limit: 128

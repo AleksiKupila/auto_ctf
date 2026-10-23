@@ -16,7 +16,7 @@ if __name__=="__main__":
     
     context_manager = ContextManager(
         system_message=sys_message(),
-        goal="Explore home directory",
+        goal=input("What do? "),
         max_tokens=config.max_context_tokens,
         max_tool_chars=1000,
     )

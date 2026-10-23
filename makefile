@@ -12,9 +12,9 @@ eval:
 
 build:
 	docker compose build
-	
+
 executor:
-	docker compose up -d --build --wait executor
+	SCENARIO=$(S) docker compose up -d --force-recreate --no-deps executor
 
 scenario:
 	SCENARIO=$(S) docker compose up -d --force-recreate --no-deps target
