@@ -5,16 +5,25 @@ from src.tools.registry import ToolOutput
 from src.agent.heuristics import count_tokens
 from src.agent.prompts import sys_message
 from src.policy.engine import ask_approval_simple
+from dataclasses import dataclass
 from src.llm.openai_compat import (
     ModelClient
 )
 from src.tools.registry import tool_schemas, execute
 from src.config import config
+
+TERMINAL_STATES = {"FINISHED", "CONNECTION_LOST", "MAX_STEPS"}
 class Approval_request():
    def __init__(self, tool_call):
 
       self.tool_call = tool_call
       self.decision = None
+@dataclass
+class Event():
+   def __init__(self, kind, data):
+
+      self.kind: str = kind
+      self.data: dict = data
 class Agent():
       
    def __init__(self, llm: ModelClient, context: ContextManager, tools, max_steps: int, container):
@@ -26,9 +35,12 @@ class Agent():
       self.container = container
 
       self.status = "RUNNING"
+      self.done = False
       self.current_request = None
       self.pending_calls = []
       self.tool_outputs = []
+      self.events = []
+      self.analysis = None
 
    def step(self):
 
@@ -51,21 +63,22 @@ class Agent():
             raise Exception(e)
          
          if not finish:
-            print(f"Assistant:\n")
-            print(cleaned_message.get("content"))
+            self.emit(kind="assistant", data=cleaned_message.get("content"))
 
          self.context.add_assistant(cleaned_message) # Add to context
 
       elif self.status == "WAITING_APPROVAL":   # A pending request/decision
          if self.current_request.decision == True: # If approved, execute and add to tool_outputs
             try:
-               self.tool_outputs.append(execute(self.current_request.tool_call, self.container))
+               output = execute(self.current_request.tool_call, self.container)
+
             except Exception as e:
-               self.tool_outputs.append(ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr=str(e)))
+               output = ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr=str(e))
 
          else: # Else, add an output with an error message
-            self.tool_outputs.append(ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr="User refused command"))
+            output = ToolOutput(id=self.current_request.tool_call.id, role="tool", status=False, stdout="", stderr="User refused command")
 
+         self.add_event("tool", self.current_request.tool_call, output)
          self.pending_calls.remove(self.current_request.tool_call)   # Remove from pending calls, resume running status
          self.status = "RUNNING"
          print(f"Agent status: 'RUNNING'")
@@ -94,14 +107,15 @@ class Agent():
             return Approval_request(call)
 
          elif not call.valid: # Invalid tool name or arguments
-            self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=call.invalid_reason))
+            output = ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=call.invalid_reason)
 
          else: # No problems, execute
             try:
-               self.tool_outputs.append(execute(call, self.container))
+               output = execute(call, self.container)
             except Exception as e:
-               self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=str(e)))
-         
+               output =  ToolOutput(id=call.id, role="tool", status=False, stdout="", stderr=str(e))
+
+         self.add_event("tool", call, output)
          self.pending_calls.pop(0)  # Remove from queue
 
       for output in self.tool_outputs: # Add results to context, clean outputs list
@@ -111,37 +125,46 @@ class Agent():
 
       return None
 
+   def advance(self):
+      if self.status not in TERMINAL_STATES and self.step_count >= self.max_steps:
+         self.status = "MAX_STEPS"
+
+      if self.status in TERMINAL_STATES:
+         self.analysis = self.finish()
+         self.done = True
+         return None
+
+      req = self.step()
+      self.step_count +=1
+
+      if req:
+         self.current_request = req
+         self.emit("approval", call=req.tool_call)
+
+      return req
+
    def run(self):
 
-      while self.step_count < self.max_steps:
+      while not self.done:
 
-         if self.status == "FINISHED" or self.status == "CONNECTION_LOST":
+         req = self.advance()
+         for ev in self.drain_events():
+            self.print_event(ev)
 
-            return self.finish()
-         
-         new_request = self.step()
-         self.step_count +=1
-
-         if new_request:
-            decision = ask_approval_simple(new_request.tool_call)
-            if decision:
-               new_request.decision = True
-            else:
-               new_request.decision = False
-
-            self.current_request = new_request
-
-      self.status = "MAX_STEPS"
-      return self.finish()
+         if req:
+            req.decision = ask_approval_simple(req.tool_call)
+            
+      return self.analysis
 
    def _flush_pending(self, reason):
       for call in self.pending_calls:
-         self.tool_outputs.append(ToolOutput(id=call.id, role="tool", status=False,
+         self.add_event("tool", call, ToolOutput(id=call.id, role="tool", status=False,
                                             stdout="", stderr=reason))
       self.pending_calls.clear()
 
       for output in self.tool_outputs:
          self.context.add_tool_result(output)
+
       self.tool_outputs.clear()
 
    def finish(self):
@@ -151,15 +174,38 @@ class Agent():
       prompt = self.context.final_analysis_context()
 
       print("Generating final analysis...")
-      resp = self.llm.generate(prompt, False) 
+
+      try:
+         resp = self.llm.generate(prompt, False) 
+      except Exception as e:
+         resp = None
       
       if not resp:
-         print("Failed generating final analysis (LLM connection failed)")
-         return None
+        return f"Failed generating final analysis: {e}"
 
       message = fetch_msg(resp) 
-      print(f"Assistant:\n")
-      print(message.get("content"))
+      self.emit("assistant", data=message.get("content"))
 
       return message.get("content")
-   
+
+   def emit(self, kind, **data):
+      self.events.append(Event(kind=kind, data=data))
+
+   def add_event(self, kind, tool_call, output):
+      self.tool_outputs.append(output)
+      self.emit(kind=kind, call=tool_call, output=output)
+
+   def drain_events(self):
+      evs, self.events = self.events, []
+      return evs
+
+   def print_event(self, event):
+      if event.kind == "assistant":
+         print(f"Assistant:")
+         print(f"{event.data["data"]}\n")
+
+      elif event.kind == "tool":
+         call = event.data.get("call")
+         print(f"Tool: {call.name}, args: {call.args}")
+         print(f"Tool output:\n")
+         print(f"{event.data.get("output").stdout}\n")

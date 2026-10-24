@@ -39,10 +39,8 @@ def execute(toolcall, container):
     '''
     try:
         function, _ = TOOLS[toolcall.name]
-        print(f"Running tool: {toolcall.name}, {toolcall.args}...\n")
         output = function(**toolcall.args, container = container)
         output.id, output.role = toolcall.id, toolcall.role
-        print(f"Stdout:\n\n {output.stdout}\n")
         return output
     
     except Exception as e:   # bad JSON or wrong/extra kwargs
