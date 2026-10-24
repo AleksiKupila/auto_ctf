@@ -22,11 +22,12 @@ if __name__=="__main__":
             except Exception as e:
                 print(f"Failed to launch UI, aborting... {e}")
         else:
-            goal = input("Enter instruction: ")
-            agent = session.new_agent(goal)
+            while True:
+                goal = input("Enter instruction: ")
+                agent = session.new_agent(goal)
 
-            if agent:
-                session.run_agent(agent)
+                if agent:
+                    session.run_agent(agent)
 
     except Exception as e:
         print(f"Failed to create new session, aborting... {e}")

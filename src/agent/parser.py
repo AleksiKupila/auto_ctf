@@ -1,19 +1,8 @@
-from src.tools.registry import execute
-from typing import Any
-from src.tools.handlers import ToolOutput
+from src.schemas.tools import ToolCall
 from pydantic import BaseModel, ConfigDict, ValidationError, Field
 from src.tools.registry import get_tools
 
 # tool-call validation + single repair attempt
-class ToolCall(BaseModel):
-
-    id: str
-    role: str
-    name: str
-    args: dict[str, Any] = Field(default_factory=dict)
-    valid: bool = True
-    invalid_reason: str | None=None
-    needs_approval: bool = False
 
 def parse_message(message):
     parsed = []

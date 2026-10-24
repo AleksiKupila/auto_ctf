@@ -14,8 +14,10 @@ def render(event, history):
 
         history.append({"role": "assistant",
                         "content": stdout,
-                        "metadata": {"title": f"{call.name}: {call.args}"}
+                        "metadata": {"title": f"{'✅' if output.status else '❌'} {call.name}: {call.args.get("cmd") or call.args.get("path")}"}
                         })
+    elif event.kind == "finish" and event.data["data"]:
+        history.append({"role": "assistant", "content": f'**Final analysis**\n\n{event.data["data"]}'})
 
     return history
 
@@ -26,7 +28,7 @@ def drive(agent, history):
         for ev in agent.drain_events():
             history = render(ev, history)
     
-        if req:
+        if req: # Update with approval request
             yield history, gr.update(visible=True), req.tool_call.args.get("cmd", "")
             return
 
@@ -39,6 +41,7 @@ def start(goal, request: gr.Request):
     except Exception as e:
         print(f"Failed to start new session, aborting... {e}")
         return
+
     agent = session.new_agent(goal)
     if agent:
         AGENTS[request.session_hash] = agent

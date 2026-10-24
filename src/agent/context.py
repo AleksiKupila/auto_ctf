@@ -1,10 +1,9 @@
-from src.tools.handlers import ToolOutput
+from src.schemas.tools import ToolOutput
 from src.agent.prompts import build_finish_message
 from src.agent.heuristics import count_tokens
 import json
 
 # message building, output truncation, history trimming
-
 
 class ContextManager:
 

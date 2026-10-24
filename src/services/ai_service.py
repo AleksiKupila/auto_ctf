@@ -1,12 +1,13 @@
-from typing import Optional
+from pydantic import ValidationError
 
-from src.schemas.responses import UserRequest, AIResponse
+from src.schemas.responses import UserRequest
 from src.agent.context import ContextManager
 from src.agent.loop import Agent
-from src.tools.registry import tool_schemas, execute
+from src.tools.registry import tool_schemas
 from src.llm.openai_compat import ModelClient
 from src.config import config
 from src.agent.prompts import sys_message
+from src.schemas.responses import UserRequest
 
 config = config
 
@@ -23,7 +24,13 @@ class AgentSession:
 
         print(f"Building agent...")
         try:
-            agent = self.build_agent(goal)
+            try:
+                valid_prompt = UserRequest(message=goal)
+            except ValidationError as e:
+                print(f"Prompt must be at least 2 and maximum 300 characters!")
+                return None
+            
+            agent = self.build_agent(valid_prompt.message)
             print(f"Agent built succesfully!")
             return agent
 

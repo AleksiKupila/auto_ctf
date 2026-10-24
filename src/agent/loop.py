@@ -1,16 +1,13 @@
-from typing import Optional
 from src.agent.context import ContextManager
 from src.agent.parser import parse_message, ToolCall, fetch_msg, clean_message
 from src.tools.registry import ToolOutput
-from src.agent.heuristics import count_tokens
-from src.agent.prompts import sys_message
 from src.policy.engine import ask_approval_simple
 from dataclasses import dataclass
 from src.llm.openai_compat import (
     ModelClient
 )
+from src.schemas.tools import ToolOutput
 from src.tools.registry import tool_schemas, execute
-from src.config import config
 
 TERMINAL_STATES = {"FINISHED", "CONNECTION_LOST", "MAX_STEPS"}
 class Approval_request():
@@ -184,7 +181,7 @@ class Agent():
         return f"Failed generating final analysis: {e}"
 
       message = fetch_msg(resp) 
-      self.emit("assistant", data=message.get("content"))
+      self.emit("finish", data=message.get("content"))
 
       return message.get("content")
 

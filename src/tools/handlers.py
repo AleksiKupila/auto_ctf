@@ -4,36 +4,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from markitdown import MarkItDown, StreamInfo
 from pydantic import ValidationError
-
-class RunCommand(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    cmd: str = Field(min_length=2, max_length=1000)
-
-class ListDir(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    path: str = Field(min_length=1, max_length=1000)
-
-class ReadFile(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    path: str = Field(min_length=1, max_length=1000)
-    filetype: Literal["txt", "json", "md", "pdf", "docx", "py", "html", "js", "css"]
-
-class Finish(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    reason: str
-    finished: bool
-class ToolOutput(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid")
-
-    id: Optional[str] = None
-    role: Optional[str] = None
-    status: bool
-    stdout: str
-    stderr: str
+from src.schemas.tools import RunCommand, ListDir, ReadFile, ToolOutput
 
 _md = MarkItDown()
 # run_command, read_file, list_dir, finish
