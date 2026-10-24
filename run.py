@@ -1,34 +1,33 @@
 from src.services.ai_service import AgentSession
-from src.config import config
-from src.tools.registry import tool_schemas
-from src.llm.openai_compat import ModelClient
-from src.agent.context import ContextManager
-from src.agent.prompts import sys_message
+from argparse import ArgumentParser
+from app.ui import build_ui
+
 
 if __name__=="__main__":
-
-    client = ModelClient(
-        base_url=config.openai_base_url,
-        model_name=config.openai_model_name,
-        tools=tool_schemas(),
-        timeout=config.model_timeout
-        )
-    
-    context_manager = ContextManager(
-        system_message=sys_message(),
-        goal=input("What do? "),
-        max_tokens=config.max_context_tokens,
-        max_tool_chars=1000,
+    parser = ArgumentParser(
+        prog="AutoCTF",
+        description="An AI agent harness for cybersecurity-related tasks"
     )
-    session = AgentSession(
-        model_client=client,
-        context=context_manager,
-        config=config
-    )
+    parser.add_argument('-u', '--ui', action='store_true', default=False, help="Use the graphical user interface")
 
-    print(f"Starting pipeline...")
-    print(f"----------")
+    args = parser.parse_args()
 
-    session.start_session()
+    try:
+        session = AgentSession()
+        if args.ui:
+            try:
+                print(f"Launching UI...")
+                demo = build_ui()
+                demo.launch()
+            except Exception as e:
+                print(f"Failed to launch UI, aborting... {e}")
+        else:
+            goal = input("Enter instruction: ")
+            agent = session.new_agent(goal)
 
-    print(f"Exiting...")
+            if agent:
+                session.run_agent(agent)
+
+    except Exception as e:
+        print(f"Failed to create new session, aborting... {e}")
+

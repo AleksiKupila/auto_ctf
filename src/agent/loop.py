@@ -154,7 +154,7 @@ class Agent():
          if req:
             req.decision = ask_approval_simple(req.tool_call)
             
-      return self.analysis
+      return
 
    def _flush_pending(self, reason):
       for call in self.pending_calls:
@@ -206,6 +206,6 @@ class Agent():
 
       elif event.kind == "tool":
          call = event.data.get("call")
-         print(f"Tool: {call.name}, args: {call.args}")
+         print(f"Tool: {call.name}: {call.args.get("cmd")}")
          print(f"Tool output:\n")
          print(f"{event.data.get("output").stdout}\n")
