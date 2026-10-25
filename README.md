@@ -221,7 +221,7 @@ Run the application from the root directory of the project (`-u` flag activates 
 python run.py -u
 ```
 
-Then open your browser at `http://localhost:8080`.
+Then open your browser at `http://localhost:7860`.
 
 ## Evaluation summary
 
