@@ -1,5 +1,7 @@
 # Auto-CTF
 
+An agent harness for solving CTF challenges, built from scratch.
+
 ## Team members
 
 - Member 1 Name: Aleksi Kupila
